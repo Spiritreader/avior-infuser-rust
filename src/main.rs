@@ -6,23 +6,23 @@ use std::{env, error::Error};
 
 const CFG_PATH: &str = "config.json";
 
-pub struct NoEligibleClientError {
+pub struct InfuserError {
     pub message: String,
 }
 
-impl fmt::Debug for NoEligibleClientError {
+impl fmt::Debug for InfuserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.message)
     }
 }
 
-impl fmt::Display for NoEligibleClientError {
+impl fmt::Display for InfuserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.message)
     }
 }
 
-impl Error for NoEligibleClientError {}
+impl Error for InfuserError {}
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("avior infuser rust, version 0.1 - maneki-neko");
@@ -64,7 +64,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("pushing job to {}", &found.name);
             return Ok(db::insert_job(&mongo_client, &config.db_name, found, &mut new_job)?);
         }
-        Err("could not find eligible client candidate in client_vec".into())
+        Err(InfuserError {
+            message: "could not find eligible client candidate in client_vec".into(),
+        }
+        .into())
     });
 
     // try pushing job to default client
@@ -75,7 +78,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(found) => {
                 db::insert_job(&mongo_client, &config.db_name, found, &mut new_job)?;
             }
-            None => return Err("could not find default candidate in client_vec".into()),
+            None => {
+                return Err(InfuserError {
+                    message: "could not find default candidate in client_vec".into(),
+                }
+                .into())
+            }
         }
     }
     Ok(())
@@ -86,7 +94,7 @@ fn get_eligible_client(
     machine_jobcounts: HashMap<String, i32>,
 ) -> Result<String, Box<dyn Error>> {
     for (_, clients) in grouped_clients {
-        let mut lowest = i32::MAX;
+        let mut job_count = i32::MAX;
         let mut eligible: Option<db::Client> = None;
         // loop over every client within a priority group
         // rules: get the client...
@@ -97,7 +105,7 @@ fn get_eligible_client(
             let key = client
                 .id
                 .to_owned()
-                .ok_or(NoEligibleClientError {
+                .ok_or(InfuserError {
                     message: "a client in the database has no id, could not determine eligible clients".to_string(),
                 })?
                 .to_string();
@@ -105,27 +113,27 @@ fn get_eligible_client(
                 continue;
             }
             if let Some(count) = machine_jobcounts.get(&key) {
-                if *count < lowest && *count < client.maximum_jobs {
+                if *count < job_count && *count < client.maximum_jobs {
                     eligible = Some(client.to_owned());
-                    lowest = *count;
+                    job_count = *count;
                 }
             } else {
                 eligible = Some(client.to_owned());
-                lowest = 0;
+                job_count = 0;
             }
         }
         // if a client was found within the priority group,
         // return it, otherwise move on to the next one
         match eligible {
             Some(client) => {
-                println!("found eligible client {} with {} jobs", client.name, lowest);
+                println!("found eligible client {} with {} jobs", client.name, job_count);
                 return Ok(client.id.to_owned().unwrap().to_string());
             }
             None => (),
         }
     }
     // if no client has been found, return an error
-    Err(Box::new(NoEligibleClientError {
+    Err(Box::new(InfuserError {
         message: "no eligible client found".to_string(),
     }))
 }
