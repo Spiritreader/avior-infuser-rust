@@ -1,11 +1,8 @@
 mod cfg;
 mod db;
 use std::collections::BTreeMap;
-use std::process;
 use std::{collections::HashMap, fmt};
 use std::{env, error::Error};
-
-use db::insert_job;
 
 const CFG_PATH: &str = "config.json";
 
