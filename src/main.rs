@@ -23,12 +23,13 @@ where
 }
 
 const CFG_PATH: &str = "config.json";
-const IDENTITY: &str = "avior infuser rust, version 0.1 - maneki-neko";
+const IDENTITY: &str = "avior infuser rust, version 0.2.0 - maneki-neko";
 const DEFAULT_LOGPATH: &str = "infuser-rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("{}", IDENTITY);
     let args: Vec<String> = env::args().collect();
+    let config = cfg::read(CFG_PATH)?;
     println!("calling args: {:?}", &args[1..]);
     if args.len() < 4 {
         return Err("program needs exactly 3 arguments in this order: path, name, sub".into());
@@ -36,7 +37,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut logger: Logger = Log::new(IDENTITY);
 
-    let config = cfg::read(CFG_PATH)?;
     let mongo_client = db::connect(&config).log(&mut logger)?;
     let _ = db::get_jobs(&mongo_client, &config.db_name).log(&mut logger)?;
     let client_vec: Vec<Client> = db::get_clients(&mongo_client, &config.db_name).log(&mut logger)?;
