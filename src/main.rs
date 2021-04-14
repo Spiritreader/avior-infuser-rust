@@ -107,17 +107,14 @@ fn get_eligible_client(
             if !client.online && !client.ignore_online {
                 continue;
             }
-            match machine_jobcounts.get(&key) {
-                Some(count) => {
-                    if *count < lowest && *count < client.maximum_jobs {
-                        eligible = Some(client.to_owned());
-                        lowest = *count;
-                    }
-                }
-                None => {
+            if let Some(count) = machine_jobcounts.get(&key) {
+                if *count < lowest && *count < client.maximum_jobs {
                     eligible = Some(client.to_owned());
-                    lowest = 0;
+                    lowest = *count;
                 }
+            } else {
+                eligible = Some(client.to_owned());
+                lowest = 0;
             }
         }
         // if a client was found within the priority group,
