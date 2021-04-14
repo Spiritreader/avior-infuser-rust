@@ -111,7 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             logger.add(&format!("{:?}", &args[1..]))
         }
     }
-    logger.flush("infuser-rust.log", log::Mode::Append)?;
+    logger.flush(DEFAULT_LOGPATH, log::Mode::Append)?;
     Ok(())
 }
 
