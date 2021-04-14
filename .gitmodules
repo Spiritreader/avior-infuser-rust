@@ -1,0 +1,3 @@
+[submodule "avior-infuser-rust-lib"]
+	path = avior-infuser-rust-lib
+	url = https://github.com/spiritreader/avior-infuser-rust-lib
