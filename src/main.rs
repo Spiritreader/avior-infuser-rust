@@ -30,12 +30,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("{}", IDENTITY);
     let args: Vec<String> = env::args().collect();
     let config = cfg::read(CFG_PATH)?;
+    let mut logger: Logger = Log::new(IDENTITY);
     println!("calling args: {:?}", &args[1..]);
     if args.len() < 4 {
-        return Err("program needs exactly 3 arguments in this order: path, name, sub".into());
+        let err_string = "error: program needs exactly 3 arguments in this order: path, name, sub";
+        logger.add(err_string);
+        logger.add(&format!("{:?}", &args[1..]));
+        logger.flush(DEFAULT_LOGPATH, log::Mode::Append)?;
+        return Err(err_string.into());
     }
-
-    let mut logger: Logger = Log::new(IDENTITY);
 
     let mongo_client = db::connect(&config).log(&mut logger)?;
     let _ = db::get_jobs(&mongo_client, &config.db_name).log(&mut logger)?;
