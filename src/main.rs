@@ -3,8 +3,28 @@ use log::Log;
 use log::Logger;
 use std::{env, error::Error};
 
+trait LogExt {
+    fn log(self, logger: &mut Logger) -> Self;
+}
+
+impl<T, E> LogExt for Result<T, E>
+where
+    E: std::fmt::Display + std::fmt::Debug,
+{
+    fn log(self, logger: &mut Logger) -> Self {
+        if let Err(e) = &self {
+            logger.add(&format!("{}", &e));
+            if let Err(e) = logger.flush(DEFAULT_LOGPATH, log::Mode::Append) {
+                eprint!("{:?}", e);
+            }
+        }
+        self
+    }
+}
+
 const CFG_PATH: &str = "config.json";
 const IDENTITY: &str = "avior infuser rust, version 0.1 - maneki-neko";
+const DEFAULT_LOGPATH: &str = "infuser-rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("{}", IDENTITY);
@@ -17,26 +37,27 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut logger: Logger = Log::new(IDENTITY);
 
     let config = cfg::read(CFG_PATH)?;
-    let mongo_client = db::connect(&config)?;
-    let _ = db::get_jobs(&mongo_client, &config.db_name)?;
-    let client_vec: Vec<db::Client> = db::get_clients(&mongo_client, &config.db_name)?;
+    let mongo_client = db::connect(&config).log(&mut logger)?;
+    let _ = db::get_jobs(&mongo_client, &config.db_name).log(&mut logger)?;
+    let client_vec: Vec<Client> = db::get_clients(&mongo_client, &config.db_name).log(&mut logger)?;
 
     //client_vec.sort_by(|a, b| b.priority.cmp(&a.priority));
     let grouped_clients = group_clients(&client_vec);
-    let machine_jobcounts = db::get_machine_jobcount(&mongo_client, &config.db_name)?;
+    let machine_jobcounts = db::get_machine_jobcount(&mongo_client, &config.db_name).log(&mut logger)?;
 
-    let mut new_job = db::Job {
+    let mut new_job = Job {
         id: None,
         path: args[1].to_string(),
         name: args[2].to_string(),
         subtitle: args[3].to_string(),
-        assigned_client: db::AssignedClient::default(),
+        assigned_client: AssignedClient::default(),
         custom_parameters: Vec::new(),
     };
 
     // if job exists we good
     if db::job_exists(&mongo_client, &config.db_name, &new_job.path)? {
-        println!("we good, job already exists in database");
+        logger.add(&format!("we good, job already exists in database"));
+        logger.flush("infuser-rust.log", log::Mode::Append)?;
         return Ok(());
     }
 
@@ -47,11 +68,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .iter()
                 .find(|client| client.id.to_owned().unwrap_or_default().to_string() == eligible_id)
             {
-                let iid = db::insert_job(&mongo_client, &config.db_name, found, &mut new_job)?;
+                new_job.assigned_client = found.to_owned().into();
+                let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
                 logger.add(&format!(
-                    "found eligible client {} with {}/{} job(s) and priority {}",
+                    "pushed to {} with {}/{} job(s) and priority {}",
                     found.name, count, maximum, found.priority
                 ));
+                //logger.add(&JobJson::from(new_job.to_owned()).to_json());
+                logger.add(&format!("{:?}", &args[1..]));
                 return Ok(iid);
             }
             Err(InfuserError {
@@ -62,7 +86,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // try pushing job to default client
     if let Err(e) = result {
-        println!("{:?}, pushing to default client {}", e, &config.default_client);
         result = client_vec
             .iter()
             .find(|client| client.name == config.default_client)
@@ -73,31 +96,37 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .into(),
             )
             .and_then(|found| {
-                let iid = db::insert_job(&mongo_client, &config.db_name, found, &mut new_job)?;
+                new_job.assigned_client = found.to_owned().into();
+                let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
+                logger.add(&format!("{:?}, pushed to default client {} instead", e, &config.default_client));
+                logger.add(&format!("{:?}", &args[1..]));
+                //logger.add(&JobJson::from(new_job.to_owned()).to_json());
                 Ok(iid)
             });
     }
     match result {
         Ok(_) => {}
         Err(e) => {
-            println!("{:?}", e);
+            logger.add(&format!("{:?}, adding calling args for manual insert", e));
+            logger.add(&format!("{:?}", &args[1..]))
         }
     }
+    logger.flush("infuser-rust.log", log::Mode::Append)?;
     Ok(())
 }
 
 /*
 fn push_to_eligible(
-    grouped_clients: BTreeMap<i32, Vec<&db::Client>>,
+    grouped_clients: BTreeMap<i32, Vec<&Client>>,
     machine_jobcounts: HashMap<String, i32>,
     mongo_client: &mongodb::sync::Client,
     config: &cfg::Config,
-    new_job: &mut db::Job,
-    client_vec: &Vec<db::Client>,
+    new_job: &mut Job,
+    client_vec: &Vec<Client>,
 ) -> Result<(), Box<dyn Error>> {
     match get_eligible_client(grouped_clients, machine_jobcounts) {
         Ok(eligible_id) => {
-            if db::job_exists(mongo_client, &config.db_name, &new_job.path)? {
+            if Job_exists(mongo_client, &config.db_name, &new_job.path)? {
                 return Err("job already exists".into());
             }
             let found = client_vec
