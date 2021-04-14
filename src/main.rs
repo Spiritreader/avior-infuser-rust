@@ -22,8 +22,8 @@ where
     }
 }
 
-const CFG_PATH: &str = "config.json";
-const IDENTITY: &str = "avior infuser rust, version 0.2.0 - maneki-neko";
+const CFG_PATH: &str = "infuser_config.json";
+const IDENTITY: &str = "avior infuser rust, version 0.2.1 - maneki-neko";
 const DEFAULT_LOGPATH: &str = "infuser-rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
