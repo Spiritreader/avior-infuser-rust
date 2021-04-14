@@ -1,9 +1,9 @@
-use std::error::Error;
+use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
+use std::error::Error;
+use std::fmt;
 use std::fs;
 use std::path::Path;
-use gethostname::gethostname;
-use std::fmt;
 
 struct ConfigDeserializeError(String);
 

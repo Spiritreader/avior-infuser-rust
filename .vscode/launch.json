@@ -9,13 +9,13 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceRoot}/target/debug/avior-infuser-rust.exe",
-            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "console": "integratedTerminal",
             "symbolSearchPath": "https://msdl.microsoft.com/download/symbols",
             "preLaunchTask": "${defaultBuildTask}",
+            "args": ["\\\\vdr-u\\SDuRec\\Recording\\exists\\Geheimnisvolle Wildblumen_2021-04-10-14-58-01-arte HD (AC3,deu).ts", "Geheimnisvolle Wildblumen", "Blütenpracht im Wald"]
         }
     ]
 }
