@@ -24,7 +24,7 @@ where
 
 const CFG_PATH: &str = "infuser_config.json";
 const IDENTITY: &str = "avior infuser rust, version 0.2.1 - maneki-neko";
-const DEFAULT_LOGPATH: &str = "infuser-rust.log";
+const DEFAULT_LOGPATH: &str = "infuser_rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("{}", IDENTITY);
