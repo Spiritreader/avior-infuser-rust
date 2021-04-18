@@ -44,10 +44,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mongo_client = db::connect(&config.db_url).log(&mut logger)?;
     let _ = db::get_jobs(&mongo_client, &config.db_name).log(&mut logger)?;
     let client_vec: Vec<Client> = db::get_clients(&mongo_client, &config.db_name).log(&mut logger)?;
+    let local_client = client_vec
+        .iter()
+        .find(|client| client.name == config.default_client)
+        .and_then(|found| Some(found.to_owned()));
 
     //client_vec.sort_by(|a, b| b.priority.cmp(&a.priority));
     let machine_jobcounts = db::get_machine_jobcount(&mongo_client, &config.db_name).log(&mut logger)?;
-    let grouped_clients = group_clients(&client_vec, machine_jobcounts);
+    let grouped_clients = group_clients(client_vec, machine_jobcounts);
 
     let mut new_job = Job {
         id: None,
@@ -66,34 +70,34 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // try pushing job to eligible client
-    let mut result =
-        get_eligible_client(grouped_clients).and_then(|(eligible_client, count, maximum)| {
-            new_job.assigned_client = eligible_client.to_owned().into();
-            let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
-            logger.add(&format!(
-                "pushed to {} with {}/{} job(s) and priority {}",
-                eligible_client.name, count, maximum, eligible_client.priority
-            ));
-            //logger.add(&JobJson::from(new_job.to_owned()).to_json());
-            logger.add(&format!("{:?}", &args[1..]));
-            return Ok(iid);
-        });
+    let mut result = get_eligible_client(&grouped_clients).and_then(|(eligible_client, count, maximum)| {
+        new_job.assigned_client = eligible_client.to_owned().into();
+        let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
+        logger.add(&format!(
+            "pushed to {} with {}/{} job(s) and priority {}",
+            eligible_client.name, count, maximum, eligible_client.priority
+        ));
+        //logger.add(&JobJson::from(new_job.to_owned()).to_json());
+        logger.add(&format!("{:?}", &args[1..]));
+        return Ok(iid);
+    });
 
     // try pushing job to default client
     if let Err(e) = result {
-        result = client_vec
-            .iter()
-            .find(|client| client.name == config.default_client)
+        result = local_client
             .ok_or(
                 InfuserError {
-                    message: "could not find eligible default client in client_vec".into(),
+                    message: "could not find default client".into(),
                 }
                 .into(),
             )
             .and_then(|found| {
                 new_job.assigned_client = found.to_owned().into();
                 let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
-                logger.add(&format!("{:?}, pushed to default client {} instead", e, &config.default_client));
+                logger.add(&format!(
+                    "{:?}, pushed to default client {} instead",
+                    e, &config.default_client
+                ));
                 logger.add(&format!("{:?}", &args[1..]));
                 //logger.add(&JobJson::from(new_job.to_owned()).to_json());
                 Ok(iid)
