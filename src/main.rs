@@ -24,7 +24,7 @@ where
 }
 
 const CFG_PATH: &str = "infuser_config.json";
-const IDENTITY: &str = "avior infuser rust, version 0.2.21 - maneki-neko";
+const IDENTITY: &str = "avior infuser rust, version 0.2.3 - maneki-neko";
 const DEFAULT_LOGPATH: &str = "infuser_rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -46,8 +46,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let client_vec: Vec<Client> = db::get_clients(&mongo_client, &config.db_name).log(&mut logger)?;
 
     //client_vec.sort_by(|a, b| b.priority.cmp(&a.priority));
-    let grouped_clients = group_clients(&client_vec);
     let machine_jobcounts = db::get_machine_jobcount(&mongo_client, &config.db_name).log(&mut logger)?;
+    let grouped_clients = group_clients(&client_vec, machine_jobcounts);
 
     let mut new_job = Job {
         id: None,
@@ -67,25 +67,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // try pushing job to eligible client
     let mut result =
-        get_eligible_client(grouped_clients, machine_jobcounts).and_then(|(eligible_id, count, maximum)| {
-            if let Some(found) = client_vec
-                .iter()
-                .find(|client| client.id.to_owned().unwrap_or_default().to_string() == eligible_id)
-            {
-                new_job.assigned_client = found.to_owned().into();
-                let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
-                logger.add(&format!(
-                    "pushed to {} with {}/{} job(s) and priority {}",
-                    found.name, count, maximum, found.priority
-                ));
-                //logger.add(&JobJson::from(new_job.to_owned()).to_json());
-                logger.add(&format!("{:?}", &args[1..]));
-                return Ok(iid);
-            }
-            Err(InfuserError {
-                message: "could not find eligible client candidate in client_vec".into(),
-            }
-            .into())
+        get_eligible_client(grouped_clients).and_then(|(eligible_client, count, maximum)| {
+            new_job.assigned_client = eligible_client.to_owned().into();
+            let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
+            logger.add(&format!(
+                "pushed to {} with {}/{} job(s) and priority {}",
+                eligible_client.name, count, maximum, eligible_client.priority
+            ));
+            //logger.add(&JobJson::from(new_job.to_owned()).to_json());
+            logger.add(&format!("{:?}", &args[1..]));
+            return Ok(iid);
         });
 
     // try pushing job to default client

@@ -1,6 +1,6 @@
 [package]
 name = "avior-infuser-rust"
-version = "0.2.21"
+version = "0.2.3"
 authors = ["Sam <earthstamper@gmail.com>"]
 edition = "2018"
 
