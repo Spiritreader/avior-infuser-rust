@@ -2,7 +2,8 @@ mod cfg;
 use avior_infuser_lib::*;
 use log::Log;
 use log::Logger;
-use std::{env, error::Error};
+use std::{env, error::Error, fmt::Display};
+use std::vec::Vec;
 
 trait LogExt {
     fn log(self, logger: &mut Logger) -> Self;
@@ -23,8 +24,27 @@ where
     }
 }
 
+#[derive(Debug)]
+struct VecWrapper<'a>(&'a [String]);
+
+impl<'a> Display for VecWrapper<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut out = String::new();
+        out.push('[');
+        for (idx, elem) in self.0.iter().enumerate() {
+            out.push_str(elem);
+            if idx < self.0.len() - 1 {
+                out.push_str(", ")
+            } else {
+                out.push(']');
+            }
+        }
+        write!(f, "{}", out)
+    }
+}
+
 const CFG_PATH: &str = "infuser_config.json";
-const IDENTITY: &str = "avior infuser rust, version 0.2.3 - maneki-neko";
+const IDENTITY: &str = "avior infuser rust, version 0.2.5 - maneki-neko";
 const DEFAULT_LOGPATH: &str = "infuser_rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -32,11 +52,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     let config = cfg::read(CFG_PATH)?;
     let mut logger: Logger = Log::new(IDENTITY);
-    println!("calling args: {:?}", &args[1..]);
+    println!("calling args: {}", VecWrapper(&args[1..]));
     if args.len() < 4 {
         let err_string = "error: program needs exactly 3 arguments in this order: path, name, sub";
         logger.add(err_string);
-        logger.add(&format!("{:?}", &args[1..]));
+        logger.add(&format!("{}", VecWrapper(&args[1..])));
         logger.flush(DEFAULT_LOGPATH, log::Mode::Append)?;
         return Err(err_string.into());
     }
@@ -78,7 +98,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             eligible_client.name, count, maximum, eligible_client.priority
         ));
         //logger.add(&JobJson::from(new_job.to_owned()).to_json());
-        logger.add(&format!("{:?}", &args[1..]));
+        logger.add(&format!("{}", VecWrapper(&args[1..])));
         return Ok(iid);
     });
 
@@ -98,7 +118,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     "{:?}, pushed to default client {} instead",
                     e, &config.default_client
                 ));
-                logger.add(&format!("{:?}", &args[1..]));
+                logger.add(&format!("{}", VecWrapper(&args[1..])));
                 //logger.add(&JobJson::from(new_job.to_owned()).to_json());
                 Ok(iid)
             });
@@ -107,7 +127,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Ok(_) => {}
         Err(e) => {
             logger.add(&format!("{:?}, adding calling args for manual insert", e));
-            logger.add(&format!("{:?}", &args[1..]))
+            logger.add(&format!("{}", VecWrapper(&args[1..])))
         }
     }
     logger.flush(DEFAULT_LOGPATH, log::Mode::Append)?;
