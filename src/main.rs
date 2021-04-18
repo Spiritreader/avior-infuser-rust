@@ -1,3 +1,4 @@
+mod cfg;
 use avior_infuser_lib::*;
 use log::Log;
 use log::Logger;
@@ -23,7 +24,7 @@ where
 }
 
 const CFG_PATH: &str = "infuser_config.json";
-const IDENTITY: &str = "avior infuser rust, version 0.2.1 - maneki-neko";
+const IDENTITY: &str = "avior infuser rust, version 0.2.21 - maneki-neko";
 const DEFAULT_LOGPATH: &str = "infuser_rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -40,7 +41,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err(err_string.into());
     }
 
-    let mongo_client = db::connect(&config).log(&mut logger)?;
+    let mongo_client = db::connect(&config.db_url).log(&mut logger)?;
     let _ = db::get_jobs(&mongo_client, &config.db_name).log(&mut logger)?;
     let client_vec: Vec<Client> = db::get_clients(&mongo_client, &config.db_name).log(&mut logger)?;
 
