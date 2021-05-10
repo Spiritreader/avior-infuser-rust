@@ -44,7 +44,7 @@ impl<'a> Display for VecWrapper<'a> {
 }
 
 const CFG_PATH: &str = "infuser_config.json";
-const IDENTITY: &str = "avior infuser rust, version 0.2.5 - maneki-neko";
+const IDENTITY: &str = "avior infuser rust, version 0.2.51 - maneki-neko";
 const DEFAULT_LOGPATH: &str = "infuser_rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
