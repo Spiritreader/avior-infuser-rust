@@ -44,7 +44,7 @@ impl<'a> Display for VecWrapper<'a> {
 }
 
 const CFG_PATH: &str = "infuser_config.json";
-const IDENTITY: &str = "avior infuser rust, version 0.2.51 - maneki-neko";
+const IDENTITY: &str = "avior infuser rust, version 0.2.52 - maneki-neko";
 const DEFAULT_LOGPATH: &str = "infuser_rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -92,7 +92,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     // try pushing job to eligible client
     let mut result = get_eligible_client(&grouped_clients).and_then(|(eligible_client, count, maximum)| {
         new_job.assigned_client = eligible_client.to_owned().into();
-        let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
+        let iid = db::insert_job(&mongo_client, &config.db_name, &new_job).map_err(|e| {
+            InfuserError { message: format!("could not insert job into database: {}", e)}
+        })?;
+
         logger.add(&format!(
             "pushed to {} with {}/{} job(s) and priority {}",
             eligible_client.name, count, maximum, eligible_client.priority
@@ -113,7 +116,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             )
             .and_then(|found| {
                 new_job.assigned_client = found.to_owned().into();
-                let iid = db::insert_job(&mongo_client, &config.db_name, &new_job)?;
+                let iid = db::insert_job(&mongo_client, &config.db_name, &new_job).map_err(|e| {
+                    InfuserError { message: format!("could not insert job into database: {}", e)}
+                })?;
                 logger.add(&format!(
                     "{:?}, pushed to default client {} instead",
                     e, &config.default_client
