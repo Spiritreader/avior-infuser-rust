@@ -35,16 +35,15 @@ impl<'a> Display for VecWrapper<'a> {
             out.push_str(elem);
             if idx < self.0.len() - 1 {
                 out.push_str(", ")
-            } else {
-                out.push(']');
             }
         }
+        out.push(']');
         write!(f, "{}", out)
     }
 }
 
 const CFG_PATH: &str = "infuser_config.json";
-const IDENTITY: &str = "avior infuser rust, version 0.2.52 - maneki-neko";
+const IDENTITY: &str = "avior infuser rust, version 0.2.53 - maneki-neko";
 const DEFAULT_LOGPATH: &str = "infuser_rust.log";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -90,7 +89,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // try pushing job to eligible client
-    let mut result = get_eligible_client(&grouped_clients).and_then(|(eligible_client, count, maximum)| {
+    let ignored_clients: Vec<Client> = vec![];
+    let mut result = get_eligible_client(&grouped_clients, &ignored_clients).and_then(|(eligible_client, count, maximum)| {
         new_job.assigned_client = eligible_client.to_owned().into();
         let iid = db::insert_job(&mongo_client, &config.db_name, &new_job).map_err(|e| {
             InfuserError { message: format!("could not insert job into database: {}", e)}
